@@ -11,6 +11,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.Random;
+import java.util.concurrent.ConcurrentLinkedDeque;
+
 import android.support.design.widget.Snackbar;
 
 public class MainActivity extends AppCompatActivity {
@@ -21,10 +23,17 @@ public class MainActivity extends AppCompatActivity {
     private int attempts;
     private final int attemptsReset = 2;
 
+    private Button[] answerButtons;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        LinearLayout ll = (LinearLayout) findViewById(R.id.answersHolder);
+        answerButtons = new Button[5];
+        for(int i = 0; i < 5; i++)
+            answerButtons[i] = (Button)ll.getChildAt(i);
 
         questions = new MultipleChoiceQuestion[] {
                 new MultipleChoiceQuestion("Which country has the most coastline?", "Canada", "Australia", "Russia", "China"),
@@ -40,26 +49,36 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
     }
 
+    /**
+     * starts the game
+     * @param view
+     */
     public void startGame(View view){
         questionNumber = 0;
         questions = shuffle(questions);
+        attempts = attemptsReset;
         displayQuestion();
     }
 
+    /**
+     * displays current question
+     * sets question text
+     * sets answers text, visibility, onclick appropriately
+     */
     private void displayQuestion(){
-        attempts = attemptsReset;
+        //attempts = attemptsReset;
         MultipleChoiceQuestion currentQuestion = questions[questionNumber];
 
         TextView questionText = (TextView) findViewById(R.id.question);
         questionText.setText(currentQuestion.getQuestion());
 
-        LinearLayout ll = (LinearLayout) findViewById(R.id.answersHolder);
+
         Button btn;
 
         String[] answers = shuffle(currentQuestion.getAllAnswers());
         int i;
         for(i = 0; i < currentQuestion.getAnswerCount(); i++){
-            btn = (Button) ll.getChildAt(i);
+            btn = answerButtons[i];
             btn.setText(answers[i]);
             btn.setVisibility(View.VISIBLE);
             if(answers[i].equals(currentQuestion.getCorrectAnswer()))
@@ -72,67 +91,26 @@ public class MainActivity extends AppCompatActivity {
                 });
         }
         for(; i < 5; i++){
-            btn = (Button) ll.getChildAt(i);
-            btn.setVisibility(View.INVISIBLE);
+            answerButtons[i].setVisibility(View.INVISIBLE);
         }
     }
 
-    private void retryQuestion(){
-        questionNumber--;
-        MultipleChoiceQuestion currentQuestion = questions[questionNumber];
 
-        TextView questionText = (TextView) findViewById(R.id.question);
-        questionText.setText(currentQuestion.getQuestion());
-
-        LinearLayout ll = (LinearLayout) findViewById(R.id.answersHolder);
-        Button btn;
-
-        String[] answers = shuffle(currentQuestion.getAllAnswers());
-        int i;
-        for(i = 0; i < currentQuestion.getAnswerCount(); i++){
-            btn = (Button) ll.getChildAt(i);
-            btn.setText(answers[i]);
-            btn.setVisibility(View.VISIBLE);
-            if(answers[i].equals(currentQuestion.getCorrectAnswer()))
-                btn.setOnClickListener(new View.OnClickListener(){
-                    public void onClick(View v){correctAnswer();}
-                });
-            else
-                btn.setOnClickListener(new View.OnClickListener(){
-                    public void onClick(View v){gameOver(false);}
-                });
-        }
-        for(; i < 5; i++){
-            btn = (Button) ll.getChildAt(i);
-            btn.setVisibility(View.INVISIBLE);
-        }
-    }
-
+    /**
+     * informs user of correctness
+     */
     public void correctAnswer(){
         Snackbar snackbar = Snackbar.make(findViewById(R.id.question), "Correct!", Snackbar.LENGTH_SHORT);
         snackbar.show();
 
-        questionNumber++;
-        if(questionNumber < questions.length)
-            displayQuestion();
-        else gameOver(true);
+        showNextButton();
     }
 
-    private void gameOver(boolean winner){
-        TextView text = (TextView) findViewById(R.id.question);
-        text.setText(winner ? "You Win!!" : "You are a loser.");
-
-        LinearLayout ll = (LinearLayout) findViewById(R.id.answersHolder);
-
-        Button b = (Button) ll.getChildAt(0);
-        b.setOnClickListener(new View.OnClickListener(){
-            public void onClick(View v){startGame(null);}
-        });
-        b.setText("Play Again?");
-        for(int i = 1; i < 5; i++)
-            ((Button) ll.getChildAt(i)).setVisibility(View.INVISIBLE);
-    }
-
+    /**
+     * decrements attmepts
+     * informs user hes incorrect
+     * offers user to try again
+     */
     public void wrongAnswer(){
         Snackbar snackbar = Snackbar.make(findViewById(R.id.question), "Incorrect!", Snackbar.LENGTH_SHORT);
 
@@ -143,16 +121,57 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        questionNumber++;
-        if(questionNumber < questions.length){
-            displayQuestion();
-            snackbar.setAction("Try again?", new View.OnClickListener(){
-                public void onClick(View v){retryQuestion();}
-            });
-            snackbar.show();
-        }
-        else gameOver(true);
+        showNextButton();
+        snackbar.setAction("Try again?", new View.OnClickListener(){
+
+            @Override
+            public void onClick(View view) {
+                displayQuestion();
+            }
+        });
+        snackbar.show();
     }
+
+
+
+    /**
+     * after a question is answered, shows button to take to next question
+     */
+    private void showNextButton(){
+
+        answerButtons[0].setText("Next Question");
+        answerButtons[0].setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                questionNumber++;
+                if(questionNumber < questions.length)
+                    displayQuestion();
+                else gameOver(true);
+            }
+        });
+        for(int i = 1; i < 5; i++)
+            answerButtons[i].setVisibility(View.INVISIBLE);
+    }
+
+
+
+    /**
+     * game over logic
+     * @param winner whether player won or lost
+     */
+    private void gameOver(boolean winner){
+        TextView text = (TextView) findViewById(R.id.question);
+        text.setText(winner ? "You Win!!" : "You are a loser.");
+
+        Button b = answerButtons[0];
+        b.setOnClickListener(new View.OnClickListener(){
+            public void onClick(View v){startGame(null);}
+        });
+        b.setText("Play Again?");
+        for(int i = 1; i < 5; i++)
+            answerButtons[i].setVisibility(View.INVISIBLE);
+    }
+
 
     private <T> T[] shuffle(T[] arr){
         Random r = new Random();
