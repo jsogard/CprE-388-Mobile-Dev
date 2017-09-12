@@ -22,6 +22,7 @@ public class MainActivity extends AppCompatActivity {
     private int questionNumber;
     private int attempts;
     private final int attemptsReset = 2;
+    private final int maxQuestions = 5;
 
     private Button[] answerButtons;
 
